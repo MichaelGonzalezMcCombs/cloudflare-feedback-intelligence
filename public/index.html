@@ -1,0 +1,346 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Cloudflare Feedback Intelligence</title>
+  <link rel="stylesheet" href="/styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+</head>
+
+<body>
+  <!-- Header with Logo -->
+  <header class="header">
+    <div class="header-content">
+      <div class="brand">
+        <img class="logo" src="/cloudflare-logo.png" alt="Cloudflare" />
+        <h1>Cloudflare Feedback Intelligence</h1>
+      </div>
+      <p class="tagline">Unified feedback intelligence platform</p>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- Filters Section -->
+    <section class="card filters-card">
+      <div class="filters-header">
+        <h2 class="section-title">Filters</h2>
+        <div class="filter-actions">
+          <button id="export-csv" class="btn-secondary">Export CSV</button>
+          <button id="export-pdf" class="btn-secondary">Export Report</button>
+          <button id="reset-filters" class="btn-refresh">Reset Filters</button>
+        </div>
+      </div>
+      
+      <div class="filters-grid">
+        <div class="filter-group">
+          <label for="filter-product">Product</label>
+          <select id="filter-product">
+            <option value="">All Products</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label for="filter-category">Category</label>
+          <select id="filter-category">
+            <option value="">All Categories</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label for="filter-source">Source</label>
+          <select id="filter-source">
+            <option value="">All Sources</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label for="filter-sentiment">Customer Tone</label>
+          <select id="filter-sentiment">
+            <option value="">All Tones</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label for="filter-timerange">Time Range</label>
+          <select id="filter-timerange">
+            <option value="all">All Time</option>
+            <option value="7">Last 7 Days</option>
+            <option value="30">Last 30 Days</option>
+            <option value="90">Last 90 Days</option>
+          </select>
+        </div>
+
+        <div class="filter-group search-group">
+          <label for="search">Search</label>
+          <input id="search" type="search" placeholder="Search feedback..." />
+        </div>
+      </div>
+
+      <div class="filter-meta">
+        <span>Last updated: <span id="last-updated">—</span></span>
+        <span class="dot">•</span>
+        <span>Click any row to see full feedback details</span>
+        <span class="dot">•</span>
+        <span>Click charts to filter results</span>
+      </div>
+    </section>
+
+    <!-- KPI Cards -->
+    <section class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-label">Total feedback items</div>
+        <div id="total-feedback" class="kpi-value">—</div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-label">Most-mentioned product</div>
+        <div id="highest-impact" class="kpi-value">—</div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-label">Average urgency</div>
+        <div id="avg-urgency" class="kpi-value">—</div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-label">Critical items</div>
+        <div id="critical-count" class="kpi-value kpi-critical">—</div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-label">Avg sentiment score</div>
+        <div id="avg-sentiment" class="kpi-value">—</div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-label">Top channel</div>
+        <div id="top-channel" class="kpi-value">—</div>
+      </div>
+    </section>
+
+    <!-- Charts Section -->
+    <section class="charts-section">
+      <div class="chart-card">
+        <h3 class="chart-title">Feedback by Product</h3>
+        <p class="chart-subtitle">Click to filter table</p>
+        <div class="chart-container">
+          <canvas id="chart-product"></canvas>
+        </div>
+      </div>
+
+      <div class="chart-card">
+        <h3 class="chart-title">Feedback by Category</h3>
+        <p class="chart-subtitle">Click to filter table</p>
+        <div class="chart-container">
+          <canvas id="chart-category"></canvas>
+        </div>
+      </div>
+
+      <div class="chart-card">
+        <h3 class="chart-title">Sentiment Trend</h3>
+        <p class="chart-subtitle">Average sentiment score over time</p>
+        <div class="chart-container">
+          <canvas id="chart-sentiment-trend"></canvas>
+        </div>
+      </div>
+
+      <div class="chart-card">
+        <h3 class="chart-title">Channel Performance</h3>
+        <p class="chart-subtitle">Feedback volume by source channel</p>
+        <div class="chart-container">
+          <canvas id="chart-channel"></canvas>
+        </div>
+      </div>
+
+      <div class="chart-card chart-wide">
+        <h3 class="chart-title">Priority Matrix</h3>
+        <p class="chart-subtitle">Feedback categorized by priority level - click to filter</p>
+        <div class="chart-container">
+          <canvas id="chart-priority"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- Feedback Table -->
+    <section class="card table-card">
+      <div class="table-header">
+        <h2 class="section-title">Feedback Breakdown (<span id="row-count">0</span> items)</h2>
+        <div class="bulk-actions" id="bulk-actions" style="display: none;">
+          <button id="bulk-assign" class="btn-secondary">Assign Selected</button>
+          <button id="bulk-tag" class="btn-secondary">Add Tag</button>
+          <button id="bulk-status" class="btn-secondary">Update Status</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th><input type="checkbox" id="select-all" title="Select all"></th>
+              <th>Product</th>
+              <th>Category</th>
+              <th>Impact</th>
+              <th>Urgency</th>
+              <th>Confidence</th>
+              <th>Source</th>
+              <th>Tone</th>
+              <th>Assigned To</th>
+              <th>Status</th>
+              <th>Title</th>
+            </tr>
+          </thead>
+          <tbody id="feedback-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Hidden utility elements -->
+    <div style="display:none;">
+      <span id="status">OK</span>
+      <span id="min-impact-value">1</span>
+      <input id="filter-min-impact" type="range" min="1" max="5" value="1" />
+    </div>
+  </main>
+
+  <!-- Feedback Detail Modal -->
+  <div id="modal-overlay" class="modal-overlay hidden">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 id="modal-title" class="modal-title">Feedback Details</h3>
+        <button id="modal-close" class="modal-close-btn">✕</button>
+      </div>
+      <div id="modal-meta" class="modal-meta"></div>
+      <div class="modal-body">
+        <pre id="modal-body"></pre>
+      </div>
+      <div class="modal-footer">
+        <select id="modal-status" class="modal-select">
+          <option value="Open">Open</option>
+          <option value="In Progress">In Progress</option>
+          <option value="Resolved">Resolved</option>
+          <option value="Closed">Closed</option>
+        </select>
+        <select id="modal-assignee" class="modal-select">
+          <option value="">Assign to team member...</option>
+          <optgroup label="Engineering">
+            <option value="sarah.chen@cloudflare.com">Sarah Chen - Workers Team</option>
+            <option value="marcus.williams@cloudflare.com">Marcus Williams - R2 Team</option>
+            <option value="priya.patel@cloudflare.com">Priya Patel - D1 Team</option>
+            <option value="james.rodriguez@cloudflare.com">James Rodriguez - Pages Team</option>
+            <option value="emily.nakamura@cloudflare.com">Emily Nakamura - AI Team</option>
+            <option value="david.okonkwo@cloudflare.com">David Okonkwo - Platform Team</option>
+          </optgroup>
+          <optgroup label="Product Management">
+            <option value="alex.kim@cloudflare.com">Alex Kim - Developer Platform PM</option>
+            <option value="lisa.thompson@cloudflare.com">Lisa Thompson - Storage PM</option>
+            <option value="raj.sharma@cloudflare.com">Raj Sharma - Compute PM</option>
+          </optgroup>
+          <optgroup label="Customer Success">
+            <option value="jennifer.lee@cloudflare.com">Jennifer Lee - Enterprise CS</option>
+            <option value="michael.santos@cloudflare.com">Michael Santos - Solutions Architect</option>
+            <option value="anna.kowalski@cloudflare.com">Anna Kowalski - Technical Support</option>
+          </optgroup>
+          <optgroup label="DevRel">
+            <option value="tom.baker@cloudflare.com">Tom Baker - Developer Advocate</option>
+            <option value="maya.johnson@cloudflare.com">Maya Johnson - Community Manager</option>
+          </optgroup>
+          <optgroup label="Documentation">
+            <option value="olivia.martinez@cloudflare.com">Olivia Martinez - Technical Writer</option>
+            <option value="chris.anderson@cloudflare.com">Chris Anderson - Docs Lead</option>
+          </optgroup>
+        </select>
+        <input id="modal-tags" type="text" placeholder="Add tags (comma separated)" class="modal-input">
+        <button id="modal-save" class="btn-primary">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bulk Action Modals -->
+  <div id="assign-modal" class="modal-overlay hidden">
+    <div class="modal modal-small">
+      <div class="modal-header">
+        <h3 class="modal-title">Assign Feedback</h3>
+        <button class="modal-close-btn" onclick="document.getElementById('assign-modal').classList.add('hidden')">✕</button>
+      </div>
+      <div class="modal-body">
+        <label>Assign to team member:</label>
+        <select id="assign-input" class="modal-select">
+          <option value="">Select team member...</option>
+          <optgroup label="Engineering">
+            <option value="sarah.chen@cloudflare.com">Sarah Chen - Workers Team</option>
+            <option value="marcus.williams@cloudflare.com">Marcus Williams - R2 Team</option>
+            <option value="priya.patel@cloudflare.com">Priya Patel - D1 Team</option>
+            <option value="james.rodriguez@cloudflare.com">James Rodriguez - Pages Team</option>
+            <option value="emily.nakamura@cloudflare.com">Emily Nakamura - AI Team</option>
+            <option value="david.okonkwo@cloudflare.com">David Okonkwo - Platform Team</option>
+          </optgroup>
+          <optgroup label="Product Management">
+            <option value="alex.kim@cloudflare.com">Alex Kim - Developer Platform PM</option>
+            <option value="lisa.thompson@cloudflare.com">Lisa Thompson - Storage PM</option>
+            <option value="raj.sharma@cloudflare.com">Raj Sharma - Compute PM</option>
+          </optgroup>
+          <optgroup label="Customer Success">
+            <option value="jennifer.lee@cloudflare.com">Jennifer Lee - Enterprise CS</option>
+            <option value="michael.santos@cloudflare.com">Michael Santos - Solutions Architect</option>
+            <option value="anna.kowalski@cloudflare.com">Anna Kowalski - Technical Support</option>
+          </optgroup>
+          <optgroup label="DevRel">
+            <option value="tom.baker@cloudflare.com">Tom Baker - Developer Advocate</option>
+            <option value="maya.johnson@cloudflare.com">Maya Johnson - Community Manager</option>
+          </optgroup>
+          <optgroup label="Documentation">
+            <option value="olivia.martinez@cloudflare.com">Olivia Martinez - Technical Writer</option>
+            <option value="chris.anderson@cloudflare.com">Chris Anderson - Docs Lead</option>
+          </optgroup>
+        </select>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="document.getElementById('assign-modal').classList.add('hidden')">Cancel</button>
+        <button id="assign-confirm" class="btn-primary">Assign</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="tag-modal" class="modal-overlay hidden">
+    <div class="modal modal-small">
+      <div class="modal-header">
+        <h3 class="modal-title">Add Tags</h3>
+        <button class="modal-close-btn" onclick="document.getElementById('tag-modal').classList.add('hidden')">✕</button>
+      </div>
+      <div class="modal-body">
+        <label>Tags (comma separated):</label>
+        <input id="tag-input" type="text" placeholder="e.g. urgent, bug, enterprise" class="modal-input">
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="document.getElementById('tag-modal').classList.add('hidden')">Cancel</button>
+        <button id="tag-confirm" class="btn-primary">Add Tags</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="status-modal" class="modal-overlay hidden">
+    <div class="modal modal-small">
+      <div class="modal-header">
+        <h3 class="modal-title">Update Status</h3>
+        <button class="modal-close-btn" onclick="document.getElementById('status-modal').classList.add('hidden')">✕</button>
+      </div>
+      <div class="modal-body">
+        <label>New status:</label>
+        <select id="status-input" class="modal-select">
+          <option value="Open">Open</option>
+          <option value="In Progress">In Progress</option>
+          <option value="Resolved">Resolved</option>
+          <option value="Closed">Closed</option>
+        </select>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="document.getElementById('status-modal').classList.add('hidden')">Cancel</button>
+        <button id="status-confirm" class="btn-primary">Update</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>
